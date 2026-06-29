@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.skool-profile/
+artifacts/
+.profiles/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.DS_Store

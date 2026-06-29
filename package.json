@@ -1,0 +1,31 @@
+{
+  "name": "skool-mcp-cli",
+  "version": "0.1.0",
+  "description": "Local CLI and MCP server for Skool Classroom automation.",
+  "type": "module",
+  "bin": {
+    "skool": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cli": "tsx src/cli.ts",
+    "mcp": "tsx src/mcp-server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "commander": "^12.1.0",
+    "playwright": "^1.45.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
