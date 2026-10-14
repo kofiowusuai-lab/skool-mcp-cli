@@ -10,6 +10,7 @@ This tool drives Skool through a dedicated Playwright browser profile. It is bui
 git clone https://github.com/kofiowusuai-lab/skool-mcp-cli.git
 cd skool-mcp-cli
 npm install
+npx playwright install chromium
 npm test
 npm run typecheck
 npm run build
@@ -248,13 +249,15 @@ Agents should map/list first, propose the exact changes, and only add `--execute
 
 ## Configuration
 
-CLI flags override environment variables.
+CLI flags override environment variables. The code reads `process.env` and does
+not automatically load `.env`. If you copy the example, export the selected
+variables in your shell or launch environment before running CLI/MCP commands.
 
 | Env var | Purpose | Default |
 | --- | --- | --- |
 | `SKOOL_PROFILE_DIR` | Persistent Playwright profile | `.skool-profile` |
 | `SKOOL_ARTIFACT_DIR` | Failure screenshots/traces | `artifacts` |
-| `SKOOL_COMMUNITY_URL` | Default community URL for future extension | unset |
+| `SKOOL_COMMUNITY_URL` | Default community URL | unset |
 | `SKOOL_HEADLESS` | Run browser headless | `true` |
 | `SKOOL_AUTO_LOGIN` | Open a headed browser automatically when login is required | `true` |
 | `SKOOL_EXECUTE` | Default execute mode for programmatic callers | `false` |
@@ -280,3 +283,50 @@ npm run typecheck
 npm run build
 npm run cli -- --help
 ```
+
+## Implementation walkthrough
+
+[`src/cli.ts`](src/cli.ts) defines commands and flags;
+[`src/mcp-server.ts`](src/mcp-server.ts) exposes the same operations as stdio tools.
+Both call [`src/core.ts`](src/core.ts), which resolves configuration, validates
+inputs, applies execution guards, and coordinates browser sessions.
+[`src/schemas.ts`](src/schemas.ts) supplies the operation schemas.
+
+[`src/skool/session.ts`](src/skool/session.ts) launches persistent Chromium with
+one local profile. The classroom, community, and upload controllers inspect the
+live UI and perform narrowly targeted actions; Markdown conversion lives in
+[`src/skool/markdown.ts`](src/skool/markdown.ts). Safety helpers validate local
+files and normalize structured errors/artifact paths. The `tests/` suite covers
+configuration, CLI/MCP schemas, controller behavior, lifecycle, file checks, and
+batch stopping behavior with test doubles. Passing it does not establish that
+selectors still match the current authenticated Skool UI.
+
+`npm run build` emits the TypeScript project into `dist/`; `npm link` after a
+build makes the package's `skool` executable available. `npm run cli` and
+`npm run mcp` run source through `tsx`, so a build is not required for those two
+entrypoints. Keep `npm install` and browser installation separate: installing
+npm packages alone may leave the Chromium executable missing.
+
+## Results, artifacts, and troubleshooting
+
+Read-only list/map commands return community information; `--json` on community
+map emits the manifest for downstream tooling. Batch manifests execute in order
+and stop on failure, so review what succeeded before replaying a partly applied
+batch. There is no transactional rollback of remote edits.
+
+The persistent profile contains session data. Failed browser actions attempt to
+save a screenshot under the artifact directory and include structured paths in
+errors. A trace path in an error is not proof of a recorded Playwright trace;
+verify which artifact files exist before using them for diagnosis.
+
+- Browser executable missing: run `npx playwright install chromium` on the target machine; Linux may also need Playwright's system dependencies.
+- Logged out: use headed login with the same profile; use `--no-auto-login` for unattended jobs that must fail instead of waiting.
+- Profile locked: close other CLI/MCP processes using that profile before retrying.
+- Title ambiguous or not visible: use the lesson's direct URL, or select its module before editing.
+- Upload rejected: verify the local path/file and inspect the failure screenshot; do not bypass the ambiguous-completion guard.
+- UI changed/security prompt: stop the operation and inspect headed rather than repeatedly submitting edits.
+
+No Skool backend is included. The tool depends on your community permissions,
+an interactive login session, network access, and browser UI behavior. Reorder
+remains guarded as documented above. There is no separate license file or
+package license declaration in this checkout.
